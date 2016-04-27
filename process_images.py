@@ -44,6 +44,54 @@ def prep_image(url, mean_image):
 
     im = im - mean_image
     return rawim, floatX(im[np.newaxis])
+
+def prep_image_parallel(arg_tuple):
+    '''
+    Input: Take url of image (Typically on s3, but can be any url)
+    Take a url of an image.
+    Resize image so the smallest dimension (h or w) is 256.
+    Center crop the largest dimension 256 pixels.
+    Output: 256x256x3 image
+    '''
+    url, mean_image = arg_tuple
+
+    try:
+        ext = url.split('.')[-1]
+        im = plt.imread(io.BytesIO(urllib.urlopen(url).read()), ext)
+        # Resize so smallest dim = 256, preserving aspect ratio
+        if len(im.shape) < 3:
+            im = np.array((im,im,im))
+            print im.shape
+            im = np.swapaxes(im,0,1)
+            im = np.swapaxes(im,1,2)
+            print 'new shape: ',im.shape
+        h, w, _ = im.shape
+        if h < w:
+            im = skimage.transform.resize(im, (256, w*256/h), preserve_range=True)
+        else:
+            im = skimage.transform.resize(im, (h*256/w, 256), preserve_range=True)
+
+        # Central crop to 224x224
+        h, w, _ = im.shape
+        im = im[h//2-112:h//2+112, w//2-112:w//2+112]
+
+        rawim = np.copy(im).astype('uint8')
+
+        # Shuffle axes to c01
+        im = np.swapaxes(np.swapaxes(im, 1, 2), 0, 1)
+
+        # Convert to BGR
+        im = im[::-1, :, :]
+
+        im = im - mean_image
+
+    except IOError:
+        print('bad url: '+ url)
+        return np.array([])
+
+    return floatX(im[np.newaxis])
+
+
 def get_aws_access():
 	'''
 	Input: None
@@ -99,14 +147,42 @@ def get_image_lists():
     chicago_list, london_list, sanfrancisco_list = get_bucket_files(bucket)
     return chicago_list, london_list, sanfrancisco_list
 
+def get_feature_list():
+    '''
+    Returns three lists of feature file locations on s3
+    '''
 
-def write_to_s3():
+    access_key, secret_access_key = get_aws_access()
+    conn = S3Connection(access_key,secret_access_key)
+    bucket = conn.get_bucket('featuresbucket')
+    features_list = []
+    for key in bucket.list():
+        filename = key.name.encode('utf-8')
+        features_list.append(filename)
+    return features_list
+
+
+def write_to_s3(bucket_name, filename):
     # get the keys
     access_key, secret_access_key = get_aws_access()
 
     #get a connection
-    conn = boto.connect_s3(access_key, secret_access_key)
-    return conn
+    conn = S3Connection(access_key, secret_access_key)
+
+    #get the bucket on s3
+    bucket = conn.get_bucket(bucket_name)
+
+    #save file to s3
+    key = bucket.new_key(filename)
+    key.set_contents_from_filename(filename)
+
+def copy_s3_to_local(bucket_name, filename):
+    '''
+    input: filename in the bucket to be copied, bucket_name
+    Copy contents of bucket with the given filename locally
+    '''
+    key = bucket.new_key(filename)
+    key.get_contents_to_filename(filename)
 
 
 if __name__ == '__main__':

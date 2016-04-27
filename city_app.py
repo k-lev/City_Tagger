@@ -4,11 +4,19 @@ from werkzeug import secure_filename
 import urllib2
 from os.path import basename
 import urlparse
+import urllib
+from appcode.vgg_nn_featurizer import load_precreated_vgg_nn_and_mean_img
+import cPickle as pickle
+from nolearn.lasagne import NeuralNet
+from sklearn.ensemble import RandomForestClassifier
+
+# from appdata.vgg_nn_featurizer import create_pretrained_vgg_nn_data
 
 app = Flask(__name__)
 
-app.config['UPLOAD_FOLDER'] = 'data/'
+app.config['UPLOAD_FOLDER'] = '/home/ubuntu/Projects/MyProject/data/'
 ALLOWED_EXTENSIONS = set(['png', 'jpg', 'jpeg', 'gif', '.bmp'])
+CITY_LABELS = ['San Francisco','Chicago','London']
 
 def allowed_file(filename):
     '''
@@ -19,16 +27,26 @@ def allowed_file(filename):
            filename.rsplit('.', 1)[1] in ALLOWED_EXTENSIONS
 
 def allowed_url(imgUrl):
-'''
-Input:  user's given url.
-Return true only if urls point directly to images.
-'''
+    '''
+    Input:  user's given url.
+    Return true only if urls point directly to images.
+    '''
     print imgUrl
     return imgUrl.lower().endswith('.jpeg') or \
         imgUrl.lower().endswith('.jpg') or \
         imgUrl.lower().endswith('.gif') or \
         imgUrl.lower().endswith('.png') or \
         imgUrl.lower().endswith('.bmp')
+
+def predict_tag(filename):
+    # resize image
+    raw_image, clean_image = prep_image(filename, MEAN_IMAGE)
+    # feturize image via vgg neural net
+    features = VGG_NN_FEATURIZER.predict_proba(clean_image)
+
+    # Get the probability for each possible class (city)
+    pred_probs = rf_model.predict_proba(features.reshape(1,len(features)))
+    return pred_probs
 
 # home page
 @app.route('/',methods=['GET', 'POST'])
@@ -43,12 +61,23 @@ def predict_file():
         file.save(os.path.join(app.config['UPLOAD_FOLDER'], filename))
         full_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
         full_path = 'localhost:8080/'+full_path
-        # features = featurize_image(filename)
-        # prediction = model.predict(X)
+    if file and allowed_file(file.filename):
+        filename = secure_filename(file.filename)
+        file.save(os.path.join(app.config['UPLOAD_FOLDER'], filename))
+        full_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+        full_path = 'localhost:8080/'+full_path
+        pred_probas = predict_tag(full_path)
+        ordered_predictions = np.argsort(pred_probas)
+        prediction = CITY_LABELS[ordered_predictions[-1]]
+        prediction2 = CITY_LABELS[ordered_predictions[-2]]
 
     else:
         return render_template('predict_file.html', title='Bad file!')
-    return render_template('predict_file.html', title='U-Bendare has located your city!', filename=filename, prediction='Chicago')
+    return render_template('predict_file.html', title='U-Bendare has located your city!', filename=filename,
+                            prediction=prediction, prediction2=prediction2,
+                            prob1 = pred_probas[ordered_predictions[-1]],
+                            prob2 = pred_probas[ordered_predictions[-2]])
+
 
 @app.route('/predict_link', methods=['POST'])
 def predict_link():
@@ -64,11 +93,20 @@ def predict_link():
         except Exception, e:
             print str(e)
             return render_template('index.html')
-        # features = featurize_image(filename)
-        # prediction = model.predict(X)
+        file.save(os.path.join(app.config['UPLOAD_FOLDER'], filename))
+        full_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+        full_path = 'localhost:8080/'+full_path
+        pred_probas = predict_tag(full_path)
+        ordered_predictions = np.argsort(pred_probas)
+        prediction = CITY_LABELS[ordered_predictions[-1]]
+        prediction2 = CITY_LABELS[ordered_predictions[-2]]
+
     else:
         return render_template('predict_file.html', title='Bad link!')
-    return render_template('predict_file.html', title='Bendare has located your city!', filename=filename, prediction='Chicago')
+    return render_template('predict_file.html', title='U-Bendare has located your city!', filename=filename,
+                            prediction=prediction, prediction2=prediction2,
+                            prob1 = pred_probas[ordered_predictions[-1]],
+                            prob2 = pred_probas[ordered_predictions[-2]])
 
 # Route that will process the file upload
 @app.route('/upload', methods=['POST'])
@@ -93,4 +131,23 @@ def send_file(filename):
                                filename)
 
 if __name__ == '__main__':
+    # if os.path.exists('.\vgg_cnn_s.pkl')==False:
+    #     print "Downloading weights"
+    #     urllib.urlretrieve("https://s3.amazonaws.com/lasagne/recipes/pretrained/imagenet/vgg_cnn_s.pkl",
+    #                     filename = 'vgg_cnn_s.pkl')
+    # else:
+    #     "Already have the weights"
+    ## *****************  Uncomment create_pretrained_vgg_nn_data is cleaned and in the right folder   #######################
+    # create vgg_nn and get the mean image which created the net
+    VGG_NN_FEATURIZER, MEAN_IMAGE = load_precreated_vgg_nn_and_mean_img()
+
+    ## *****************  Uncomment When model is available  #######################
+    # load model
+    with open("/data/tmp_rf_model.pkl") as f_un:
+        model = pickle.load(f_un)
+
+    ## create the vgg neural net for featurizing.  Preload the weights.
+    #net, output_layer, MEAN_IMAGE = create_pretrained_vgg_nn_data()
+
+
     app.run(host='0.0.0.0', port=8080, debug=True)

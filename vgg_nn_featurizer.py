@@ -9,18 +9,18 @@ from lasagne.layers import MaxPool2DLayer as PoolLayer
 from lasagne.layers import LocalResponseNormalization2DLayer as NormLayer
 from lasagne.utils import floatX
 # from nolearn.lasagne import NeuralNet
-import pickle
+from nolearn.lasagne import NeuralNet
+import cPickle as pickle
 import urllib
-from resize_images import prep_image, get_bucket_files, get_aws_access, get_image_lists
+from process_images import prep_image, get_bucket_files, get_aws_access, get_image_lists, write_to_s3, prep_image_parallel
 import os
 from pymongo import MongoClient
 import json
-import threading
 import multiprocessing
 
 POOL_SIZE = 8
 
-def write_pretrained_vgg_nn_data():
+def create_pretrained_vgg_nn_data():
     '''
     Create a vgg neural net. Load pretrained weights.
     Return the dictionary of nn layers, the lasagne output_layer, the mean_image
@@ -61,7 +61,7 @@ def write_pretrained_vgg_nn_data():
     # vgg_nn.save_params_to('./vgg_weights_only.plk')
     return net, output_layer, MEAN_IMAGE
 
-def create_pretrained_vgg_nn():
+def create_pretrained_vgg_nn_nolearn():
     '''
     Create a vgg neural net. Load pretrained weights.
     Return the dictionary of nn layers, the lasagne output_layer, the mean_image
@@ -69,97 +69,130 @@ def create_pretrained_vgg_nn():
     # define the vgg_s network
     vgg_nn = NeuralNet(
         layers = [
-            ('input',InputLayer),
-            ('conv1',ConvLayer),
-            ('norm1',NormLayer),
-            ('pool1',PoolLayer),
-            ('conv2',ConvLayer),
-            ('pool2',PoolLayer),
-            ('conv3',ConvLayer),
-            ('conv4',ConvLayer),
-            ('conv5',ConvLayer),
-            ('pool5',PoolLayer),
-            ('fc6',DenseLayer),
-            ('drop6',DropoutLayer),
-            ('fc7',DenseLayer)],
+            (InputLayer, {
+                        'name':'input',
+                        'shape':(None,3,224,224)
+                         }),
+            (ConvLayer, {
+                        'name':'conv1',
+                        'num_filters':96,
+                        'filter_size':(7,7),
+                        'stride':2,
+                        'flip_filters':False
+                        }),
+            (NormLayer, {
+                        'name':'norm1',
+                        'alpha':.0001
+                        }),
+            (PoolLayer, {
+                        'name':'pool1',
+                        'pool_size':(3,3),
+                        'stride':3,
+                        'ignore_border':False
+                        }),
+            (ConvLayer, {
+                        'name':'conv2',
+                        'num_filters':256,
+                        'filter_size':(5,5),
+                        'flip_filters':False
+    #                     'pad':2,
+    #                     'stride':1
+                       }),
+            (PoolLayer, {
+                        'name':'pool2',
+                        'pool_size':(2,2),
+                        'stride':2,
+                        'ignore_border':False
+                        }),
+            (ConvLayer, {
+                        'name':'conv3',
+                        'num_filters':512,
+                        'filter_size':(3,3),
+                        'pad':1,
+    #                     'stride':1
+                        'flip_filters':False
+                       }),
+            (ConvLayer, {
+                        'name':'conv4',
+                        'num_filters':512,
+                        'filter_size':(3,3),
+                        'pad':1,
+    #                     'stride':1
+                        'flip_filters':False
+                        }),
+            (ConvLayer, {
+                        'name':'conv5',
+                        'num_filters':512,
+                        'filter_size':(3,3),
+                        'pad':1,
+    #                     'stride':1
+                        'flip_filters':False
+                         }),
+            (PoolLayer, {
+                        'name':'pool5',
+                        'pool_size':(3,3),
+                        'stride':3,
+                        'ignore_border':False
+                        }),
+            (DenseLayer,{
+                        'name':'fc6',
+                        'num_units':4096
+                       }),
+            (DropoutLayer, {
+                        'name':'drop6',
+                        'p':.05
+                        }),
+            (DenseLayer, {
+                        'name':'fc7',
+                        'num_units':4096
+                        }),
+        ],
 
 
-        #input data settings
-        input_shape = (None,3,224,224),
 
-        #convpool1 settings
-        conv1_num_filters    = 96,
-        conv1_filter_size = (7,7),
-        conv1_pad = 0,
-        conv1_stride = 2,
-        conv1_flip_filters=False,
-        #norm1 layer settings
-        norm1_alpha = .0001,
+    #        # optimization method:
+        update=nesterov_momentum,
+        update_learning_rate=0.01,
+        update_momentum=0.9,
 
-        #pool1 layer settings
-        pool1_pool_size     = (3,3),
-        pool1_stride        = 3,
-        pool1_ignore_border = False,
+    #     #potentially ingore this
+    #     update               = sgd,
+    #     update_learning_rate = theano.shared(0.05),
 
-        #conv2 settings
-        conv2_num_filters  = 256,
-        conv2_filter_size  = (5,5),
-        conv2_pad          = 2,
-        conv2_stride       = 1,
-        conv2_flip_filters=False,
-
-        # pool2 settings
-        pool2_pool_size     = (2,2),
-        pool2_stride        = 2,
-        pool2_ignore_border = False,
-
-        #conv3 settings
-        conv3_num_filters   = 512,
-        conv3_filter_size   = (3,3),
-        conv3_pad = 1,
-        conv3_flip_filters=False,
-
-        # conv3_stride = 1,
-
-        #conv4 settings
-        conv4_num_filters    = 512,
-        conv4_filter_size = (3,3),
-        conv4_pad = 1,
-        conv4_stride = 1,
-        conv4_flip_filters=False,
-
-        #conv5 settings
-        conv5_num_filters    = 512,
-        conv5_filter_size = (3,3),
-        conv5_pad = 1,
-        conv5_stride = 1,
-        conv5_flip_filters=False,
-
-        # pool5 settings
-        pool5_pool_size     = (3,3),
-        pool5_stride        = 3,
-        pool5_ignore_border = False,
-
-        #fc6 settings
-        fc6_num_units    = 4096,
-        #dropout6 settings
-        drop6_p = 0.5,
-        #fc6 settings
-        fc7_num_units    = 4096,
-
-        #potentially ingore this
-        update               = sgd,
-        update_learning_rate = theano.shared(0.05),
+    #         regression=True,  # flag to indicate we're dealing with regression problem
+    #     max_epochs=400,  # we want to train this many epochs
+    #     verbose=1,
 
             )
 
-    # upload and input the pretrained weights
-    model = pickle.load(open('./vgg_cnn_s.pkl'))
-    MEAN_IMAGE = model['mean image']
-
+    # upload pretrained weights
     vgg_nn.initialize()
+    vgg_nn.load_params_from('./vgg_nolearn_saved_wts_biases.pkl')
 
-    return vgg_net, MEAN_IMAGE
+    # upload mean image
+    model = pickle.load(open('./vgg_cnn_s.pkl'))
+    mean_image = model['mean image']
+    with open("/data/mean_image.pkl", 'w') as f:
+        pickle.dump(mean_image, f)
+    # pickel the model and the mean image
+    with open("/data/full_vgg.pkl", 'w') as f:
+        pickle.dump(vgg_nn, f)
+
+    return vgg_net, mean_image
+
+def load_precreated_vgg_nn_and_mean_img():
+    '''
+    Retreive fully initialized nolean vgg neural net mode from file.
+    Retreive mean image data from file.
+    Return:  nolearn NeuralNet, mean_image array
+    '''
+
+    with open("/data/mean_image.pkl") as f_un:
+        mean_image = pickle.load(f_un)
+    with open("/data/full_vgg.pkl") as f:
+        vgg_nn = pickle.load(f)
+
+        return vgg_nn, mean_image
 
 
 def featurize_images(coll, path_prefix, image_urls, output_layer, mean_image, label, label_val):
@@ -191,12 +224,107 @@ def featurize_images(coll, path_prefix, image_urls, output_layer, mean_image, la
         except IOError:
             print('bad url: '+ path_prefix + url)
 
+
+
+
+
+
+def featurize_1000images_pkl(path_prefix, image_urls, start_index, step_size, output_layer, mean_image, label, label_val):
+    '''
+    Input: database collection, list of image urls (location on aws s3), starting index (only 1000 per call)
+        lasagne output_layer, mean_image, imageset label, imageset lavel_val (int)
+    Process each image (vectorize, resize and crop).
+    Run image throught through the network.
+    Put the features in a dataframe.
+    Pickle and save the datframe locally and to s3
+    '''
+    # if start_index == 0 and label=='San_Francisco':
+    #     return
+    # if start_index == 0 and label=='London':
+    #     return
+
+    df = pd.DataFrame()
+    if len(image_urls) < start_index+step_size:
+        end_index = len(image_urls)
+    else:
+        end_index = step_size + start_index
+    df_list = []
+    for i, url in enumerate(image_urls[start_index:end_index]):
+        try:
+            # if i%100 == 0:
+            print i+start_index, url
+            # process the image
+            rawim, im = prep_image(path_prefix+url, mean_image)
+            # run image through NN to get features
+            features = np.array(lasagne.layers.get_output(output_layer, im, deterministic=True).eval())
+            #store featues in df
+            current_img_df = pd.DataFrame(features)
+            current_img_df['label'] = label
+            current_img_df['label_val'] = label_val
+            current_img_df['url'] = url
+            df_list.append(current_img_df)
+            # df = pd.concat([df, current_img_df])
+
+        except IOError:
+            print('bad url: '+ path_prefix + url)
+
+    # after finished, pickle it
+    df = pd.concat(df_list)
+    filepath_filename = 'data/'+label+str(end_index)+'.pkl'
+    print filepath_filename
+    df.to_pickle(filepath_filename)
+    write_to_s3('featuresbucket', filepath_filename)
+
+def parallel_featurize_1000images_pkl(path_prefix, image_urls, start_index, step_size, vgg_nn, mean_image,
+                                        label, label_val, pool_size):
+    '''
+    Input: database collection, list of image urls (location on aws s3), starting index (only 1000 per call)
+        lasagne output_layer, mean_image, imageset label, imageset lavel_val (int)
+    Process each image (vectorize, resize and crop).
+    Run image throught through the network.
+    Put the features in a dataframe.
+    Pickle and save the datframe locally and to s3
+    '''
+    # if start_index == 0 and label=='San_Francisco':
+    #     return
+    # if start_index == 0 and label=='London':
+    #     return
+    print "Parallelizing %s: from %d to %d..." %(label, start_index, start_index+step_size)
+    if len(image_urls) < start_index+step_size:
+        end_index = len(image_urls)
+    else:
+        end_index = step_size + start_index
+    print start_index, end_index
+    df_list = []
+
+    pool = multiprocessing.Pool(pool_size)
+
+    img_list = pool.map(prep_image_parallel, [(path_prefix+image_url, mean_image,) for image_url in image_urls[start_index:end_index]])
+
+    img_list = [img for img in img_list if img.size > 0]
+
+    # vectorize image list
+    image_vectors = np.concatenate(img_list,axis=0)
+
+    featurized_images = vgg_nn.predict_proba(image_vectors)
+
+    df = pd.DataFrame(featurized_images)
+    df['label'] = label
+    df['label_val'] = label_val
+
+    filepath_filename = '/data/'+label+str(end_index)+'.pkl'
+    print filepath_filename
+    df.to_pickle(filepath_filename)
+    write_to_s3('featuresbucket', filepath_filename)
+
+
+
 def featurize_one_image(coll, path_prefix, url, output_layer, mean_image, label, label_val):
     '''
     Input: database collection, list of image urls (location on aws s3),
         lasagne output_layer, mean_image, imageset label, imageset lavel_val (int)
     Process each image (vectorize, resize and crop).
-    Run image throught through the network.
+    Run image through through the network.
     Put features in the database collection
     '''
 
@@ -216,6 +344,26 @@ def featurize_one_image(coll, path_prefix, url, output_layer, mean_image, label,
     except IOError:
         print('bad url: '+ path_prefix + url)
 
+def featurize_image(full_path_filename, output_layer, mean_image):
+    '''
+    Input: full path to the location of the file,
+        lasagne output_layer, mean_image from the training data
+    Process the image (vectorize, resize and crop).
+    Run image through through the network.
+    Output:  features array shape: (4096,1)
+    '''
+
+    try:
+        # process the image
+        rawim, im = prep_image(path_prefix+url, mean_image)
+
+        # run image through NN to get features
+        features = np.array(lasagne.layers.get_output(output_layer, im, deterministic=True).eval())
+
+        return features
+
+    except IOError:
+        print('bad url: '+ path_prefix + url)
 
 def featurize_parallel(coll_lst, path_prefix, image_lists, output_layer, mean_image, labels, label_vals, pool_size):
     print "Featurizing in parallel..."
@@ -235,28 +383,41 @@ if __name__ == '__main__':
                         filename = 'vgg_cnn_s.pkl')
 
     # Format the original weights
-    # write_pretrained_vgg_nn_data()
+    # create_pretrained_vgg_nn_data()
     # Create the neural net
-    net, output_layer, MEAN_IMAGE = write_pretrained_vgg_nn_data()
+    # net, output_layer, MEAN_IMAGE = create_pretrained_vgg_nn_data()
     # vgg_net, MEAN_IMAGE  = create_pretrained_vgg_nn()
+    vgg_net, MEAN_IMAGE  = load_precreated_vgg_nn_and_mean_img()
 
     # Featurize and save the data in a database
     # create MongoDB database and collection
     #******************************* THIS SCRIPT TO MAKE FEATURES AN PUT IN DB ************************
-    DB_NAME = 'TRAINING_FEATURES'
-    client = MongoClient()
-    db = client[DB_NAME]
-    coll_chi = db['Chicago']    # connect to mongodb to store scraped data
-    coll_lon = db['London']    # connect to mongodb to store scraped data
-    coll_sf = db['San_Francisco']    # connect to mongodb to store scraped data
-
-    coll_lst = [coll_chi, coll_lon, coll_sf]
+    # DB_NAME = 'TRAINING_FEATURES'
+    # client = MongoClient()
+    # db = client[DB_NAME]
+    # coll_chi = db['Chicago']    # connect to mongodb to store scraped data
+    # coll_lon = db['London']    # connect to mongodb to store scraped data
+    # coll_sf = db['San_Francisco']    # connect to mongodb to store scraped data
+    #
+    # coll_lst = [coll_chi, coll_lon, coll_sf]
 
     path_prefix = 'https://s3.amazonaws.com/rawcityimages/'
     # image_lists = get_image_lists()
     chicago_list, london_list, sanfrancisco_list = get_image_lists()
 
-    featurize_images(coll_chi,path_prefix, chicago_list, output_layer, MEAN_IMAGE, 'Chicago', 1)
-    featurize_images(coll_lon,path_prefix, london_list, output_layer, MEAN_IMAGE, 'London', 2)
-    featurize_images(coll_sf, path_prefix, sanfrancisco_list, output_layer, MEAN_IMAGE, 'San Francisco', 3)
+    # featurize_images(coll_chi,path_prefix, chicago_list, output_layer, MEAN_IMAGE, 'Chicago', 1)
+    # featurize_images(coll_lon,path_prefix, london_list, output_layer, MEAN_IMAGE, 'London', 2)
+    # featurize_images(coll_sf, path_prefix, sanfrancisco_list, output_layer, MEAN_IMAGE, 'San Francisco', 3)
     #******************************* END THIS SCRIPT TO MAKE FEATURES AN PUT IN DB ************************
+    #******************** Begin script:  pickle features ****************************
+
+    # for start_index in xrange(4000,6000,1000):
+    #     featurize_1000images_pkl(path_prefix, london_list, start_index, 1000, output_layer, MEAN_IMAGE, 'London', 2)
+    #     featurize_1000images_pkl(path_prefix, chicago_list, start_index, 1000, output_layer, MEAN_IMAGE, 'Chicago', 1)
+    #     featurize_1000images_pkl(path_prefix, sanfrancisco_list, start_index, 1000, output_layer, MEAN_IMAGE, 'San_Francisco', 3)
+
+    step_size = 1000
+    for start_index in xrange(2000,3000,1000):
+        parallel_featurize_1000images_pkl(path_prefix, london_list, start_index, step_size, vgg_net, MEAN_IMAGE, 'London', 2, POOL_SIZE)
+        parallel_featurize_1000images_pkl(path_prefix, chicago_list, start_index, step_size, vgg_net, MEAN_IMAGE, 'Chicago', 1, POOL_SIZE)
+        parallel_featurize_1000images_pkl(path_prefix, sanfrancisco_list, start_index, step_size, vgg_net, MEAN_IMAGE, 'San_Francisco', 3, POOL_SIZE)
