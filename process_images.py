@@ -16,6 +16,7 @@ def prep_image(url, mean_image):
     Output: 256x256x3 image
     '''
     ext = url.split('.')[-1]
+    print url
     im = plt.imread(io.BytesIO(urllib.urlopen(url).read()), ext)
     # Resize so smallest dim = 256, preserving aspect ratio
     if len(im.shape) < 3:
@@ -83,7 +84,8 @@ def prep_image_parallel(arg_tuple):
         # Convert to BGR
         im = im[::-1, :, :]
 
-        im = im - mean_image
+        if mean_image:
+            im = im - mean_image
 
     except IOError:
         print('bad url: '+ url)

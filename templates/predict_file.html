@@ -69,7 +69,7 @@ function enableUrlSubmit() {
             <div class="row">
                 <div class="col-md-4">
                     <form role="form" action="predict_file" method="post" enctype="multipart/form-data" id="file_form" >
-                        <button type="submit" class="btn btn-primary btn-lg" id="submit_file_btn" disabled>   
+                        <button type="submit" class="btn btn-primary btn-lg" id="submit_file_btn" disabled>
                                 Submit File   &raquo;</button>
                         <input class="fileUpload" type="file" id="file_text" onclick="enableFileSubmit()"
                                name="filename" size="40" value="Upload image file">
@@ -82,7 +82,7 @@ function enableUrlSubmit() {
                     <div class="container">
                         <form role="form" action="predict_link" method="post" enctype="multipart/form-data" >
                     <!--        <div class='alignright'> -->
-                            <div>  
+                            <div>
                                 <button type="submit" class="btn btn-primary btn-lg" id="submit_url_btn" disabled>
                                         Submit URL   &raquo;</button>
                                 <div class="form-group">
@@ -99,18 +99,19 @@ function enableUrlSubmit() {
 
         <div class="center">
             <center>
-            <img  src={{ url_for('send_file', filename=filename) }} alt="random stuff" 
+            <img  src={{ url_for('send_file', filename=filename) }} alt="random stuff"
                         style="width:512px;height:512px" ></img>
             </center>
             <div class="center">
-                <h2 style="text-align:center"> {{prediction}} </h2>
+              <h2 style="text-align:center"> p = {{prob1}}  --> {{prediction}} </h2>
+              <h2 style="text-align:center"> p = {{prob2}}  --> {{prediction2}} </h2>
             </div>
         </div>
         {% endif %}
     </div>
-    </body> 
+    </body>
 </html>
-        </div>      
+        </div>
 
 
     <div class="container">

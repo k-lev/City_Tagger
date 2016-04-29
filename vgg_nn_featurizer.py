@@ -50,15 +50,8 @@ def create_pretrained_vgg_nn_data():
     MEAN_IMAGE = model['mean image']
     lasagne.layers.set_all_param_values(output_layer, model['values'])
     output_layer = net['fc7']
-    # net.pop('drop7')
-    # net.pop('fc8')
-    # vgg_nn = NeuralNet(net)
-    # model.pop('values')
-    # with open('./vgg_data_no_wts.plk','wb') as f:
-    #     pickle.dump(model, f)
-    # # lasagne.layers.set_all_param_values(output_layer, model['values'])
-    #
-    # vgg_nn.save_params_to('./vgg_weights_only.plk')
+    net.pop('fc8')
+
     return net, output_layer, MEAN_IMAGE
 
 def create_pretrained_vgg_nn_nolearn():
@@ -389,35 +382,16 @@ if __name__ == '__main__':
     # vgg_net, MEAN_IMAGE  = create_pretrained_vgg_nn()
     vgg_net, MEAN_IMAGE  = load_precreated_vgg_nn_and_mean_img()
 
-    # Featurize and save the data in a database
-    # create MongoDB database and collection
-    #******************************* THIS SCRIPT TO MAKE FEATURES AN PUT IN DB ************************
-    # DB_NAME = 'TRAINING_FEATURES'
-    # client = MongoClient()
-    # db = client[DB_NAME]
-    # coll_chi = db['Chicago']    # connect to mongodb to store scraped data
-    # coll_lon = db['London']    # connect to mongodb to store scraped data
-    # coll_sf = db['San_Francisco']    # connect to mongodb to store scraped data
-    #
-    # coll_lst = [coll_chi, coll_lon, coll_sf]
 
     path_prefix = 'https://s3.amazonaws.com/rawcityimages/'
+
     # image_lists = get_image_lists()
     chicago_list, london_list, sanfrancisco_list = get_image_lists()
 
-    # featurize_images(coll_chi,path_prefix, chicago_list, output_layer, MEAN_IMAGE, 'Chicago', 1)
-    # featurize_images(coll_lon,path_prefix, london_list, output_layer, MEAN_IMAGE, 'London', 2)
-    # featurize_images(coll_sf, path_prefix, sanfrancisco_list, output_layer, MEAN_IMAGE, 'San Francisco', 3)
-    #******************************* END THIS SCRIPT TO MAKE FEATURES AN PUT IN DB ************************
     #******************** Begin script:  pickle features ****************************
 
-    # for start_index in xrange(4000,6000,1000):
-    #     featurize_1000images_pkl(path_prefix, london_list, start_index, 1000, output_layer, MEAN_IMAGE, 'London', 2)
-    #     featurize_1000images_pkl(path_prefix, chicago_list, start_index, 1000, output_layer, MEAN_IMAGE, 'Chicago', 1)
-    #     featurize_1000images_pkl(path_prefix, sanfrancisco_list, start_index, 1000, output_layer, MEAN_IMAGE, 'San_Francisco', 3)
-
     step_size = 1000
-    for start_index in xrange(2000,3000,1000):
+    for start_index in xrange(0000,10000,1000):
         parallel_featurize_1000images_pkl(path_prefix, london_list, start_index, step_size, vgg_net, MEAN_IMAGE, 'London', 2, POOL_SIZE)
         parallel_featurize_1000images_pkl(path_prefix, chicago_list, start_index, step_size, vgg_net, MEAN_IMAGE, 'Chicago', 1, POOL_SIZE)
         parallel_featurize_1000images_pkl(path_prefix, sanfrancisco_list, start_index, step_size, vgg_net, MEAN_IMAGE, 'San_Francisco', 3, POOL_SIZE)
