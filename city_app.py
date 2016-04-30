@@ -61,7 +61,7 @@ def predict_tag(filename):
 # home page
 @app.route('/',methods=['GET', 'POST'])
 def index():
-    return render_template('index.html', title='U-Bendare, your automatic city identifier!')
+    return render_template('index.html', title='City Tags')
 
 @app.route('/predict_file', methods=['GET', 'POST'])
 def predict_file():
@@ -88,7 +88,7 @@ def predict_file():
 
     else:
         return render_template('predict_file.html', title='Bad file!')
-    return render_template('predict_file.html', title='U-Bendare has located your city!', filename=filename,
+    return render_template('predict_file.html', title='City Tags has located your city!', filename=filename,
                             prediction=prediction, prediction2=prediction2, prob1 = prob1,prob2 = prob2)
 
 
@@ -125,7 +125,7 @@ def predict_link():
         prob2 = pred_probas[0][ordered_predictions[-2]]
     else:
         return render_template('predict_file.html', title='Bad link!')
-    return render_template('predict_file.html', title='U-Bendare has located your city!', filename=filename,
+    return render_template('predict_file.html', title='City Tags has located your city!', filename=filename,
                             prediction=prediction, prediction2=prediction2, prob1 = prob1,prob2 = prob2)
 
 # Route that will process the file upload
@@ -154,7 +154,7 @@ if __name__ == '__main__':
     VGG_NN_FEATURIZER, MEAN_IMAGE = load_precreated_vgg_nn_and_mean_img()
 
     # load model
-    with open("/data/tmp_rf_model.pkl") as f_un:
+    with open("/data/tmp_svm_model2.pkl") as f_un:
         model = pickle.load(f_un)
 
 

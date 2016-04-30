@@ -25,7 +25,7 @@ function enableUrlSubmit() {
     <meta name="author" content="">
     <link rel="icon" href="../../favicon.ico">
 
-    <title>U-Bendare Predict</title>
+    <title>City Tags Predict</title>
 
     <!-- Bootstrap core CSS -->
     <link href="../static/css/bootstrap.min.css" rel="stylesheet">
@@ -55,7 +55,7 @@ function enableUrlSubmit() {
             <span class="icon-bar"></span>
             <span class="icon-bar"></span>
           </button>
-          <a class="navbar-brand" href="/">U-Bendare</a>
+          <a class="navbar-brand" href="/">City Tags</a>
         </div>
       </div>
     </nav>
@@ -63,8 +63,8 @@ function enableUrlSubmit() {
     <!-- Main jumbotron for a primary marketing message or call to action -->
     <div class="jumbotron">
       <div class="container">
-        <h1>{{title}}</h1>
-        <h2><center>Want to find out where that picture was taken?</center></h2>
+        <h1><center>{{title}}</center></h1>
+        <h2><center>Find out where another picture was taken! </center></h2>
            <br>
             <div class="row">
                 <div class="col-md-4">
@@ -79,14 +79,14 @@ function enableUrlSubmit() {
                 <div class="col-md-4">
                 </div>
                 <div class="col-md-4">
-                    <div class="container">
+                    <div class="container" align="right">
                         <form role="form" action="predict_link" method="post" enctype="multipart/form-data" >
                     <!--        <div class='alignright'> -->
                             <div>
-                                <button type="submit" class="btn btn-primary btn-lg" id="submit_url_btn" disabled>
-                                        Submit URL   &raquo;</button>
                                 <div class="form-group">
                                     <input type="text" class="form-control" id="img_link" name="link_address" placeholder="Enter link" onclick="enableUrlSubmit()" size="40">
+                                    <button type="submit" class="btn btn-primary btn-lg" id="submit_url_btn" disabled>
+                                            Submit URL   &raquo;</button>
                                 </div>
                             </div>
                         </form>
@@ -94,7 +94,6 @@ function enableUrlSubmit() {
                 </div>
             </div>
 
-        <br><p><br><br></p>
         {% if filename %}
 
         <div class="center">
@@ -102,9 +101,11 @@ function enableUrlSubmit() {
             <img  src={{ url_for('send_file', filename=filename) }} alt="random stuff"
                         style="width:512px;height:512px" ></img>
             </center>
-            <div class="center">
+            <div>
+              <center>
               <h2 style="text-align:center"> p = {{prob1}}  --> {{prediction}} </h2>
               <h2 style="text-align:center"> p = {{prob2}}  --> {{prediction2}} </h2>
+            </Center>
             </div>
         </div>
         {% endif %}

@@ -54,6 +54,8 @@ def create_pretrained_vgg_nn_data():
 
 def create_pretrained_vgg_nn_nolearn():
     '''
+    *** This function need only be run once to create and save a nolearn NeuralNet ***
+    ***     instance from the origninal lasagne layer weights for the vgg net.     ***
     Create a vgg neural net. Load pretrained weights.
     Pickle the entire net.
     Pickle the mean image.
@@ -133,7 +135,7 @@ def create_pretrained_vgg_nn_nolearn():
                        }),
             (DropoutLayer, {
                         'name':'drop6',
-                        'p':.05
+                        'p':.5
                         }),
             (DenseLayer, {
                         'name':'fc7',
@@ -310,17 +312,6 @@ def featurize_image(full_path_filename, output_layer, mean_image):
 
     except IOError:
         print('bad url: '+ path_prefix + url)
-
-
-def featurize_parallel(coll_lst, path_prefix, image_lists, output_layer, mean_image, labels, label_vals, pool_size):
-    print "Featurizing in parallel..."
-
-    pool = multiprocessing.Pool(pool_size)
-
-    pool.map(featurize_images, [(coll_lst[i], path_prefix, image_lists[i],
-                                output_layer, mean_image, labels[i], label_val[i],) for i in xrange(3)])
-    pool.close()
-    pool.join()
 
 
 if __name__ == '__main__':

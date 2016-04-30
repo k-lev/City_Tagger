@@ -1,6 +1,17 @@
 # ********************************************************************************
 # The functions in this file are for exploring models for making predictions on
 # a dataset featurized through a vgg neural net.
+#
+# Best results found so far for the current dataset:
+#   Accuracy:   74%
+#   SVM model with parameters:
+                    # kernel = 'rbf',
+                    # gamma = .001,
+                    # verbose = True,
+                    # decision_function_shape='ovr',
+                    # C=10,
+                    # probability=True
+
 # ********************************************************************************
 import numpy as np
 import pandas as pd
@@ -277,7 +288,8 @@ if __name__ == '__main__':
 
     # train_svm_model()
     # explore_model()
-    train_svm_model_parallel()
+    # train_svm_model_parallel()
+    train_logistic_model()
 
     ################ SCORES SCORES SCORES #############################
 # {'kernel': 'rbf', 'C': 10, 'decision_function_shape': 'ovr', 'gamma': 0.1}
