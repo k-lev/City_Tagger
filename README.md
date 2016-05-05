@@ -10,7 +10,7 @@
 + [Sample Webpage Results](#sample)
 + [Package Requirements](#requirements)
 + [Instructions](#instructions)
-+ [Credits](#Credits)
++ [Credits](#credits)
 + [License](#license)
 
 ## <a name="intro">Introduction
@@ -60,7 +60,7 @@ The model has 73.5% accuracy.
 
 ![Result Sample](https://raw.github.com/k-lev/City_Tagger/master/img/webPageSample.png)
 
-## <a name="requirement">Package Requirements
+## <a name="requirements">Package Requirements
 pandas
 numpy
 matplotlib
