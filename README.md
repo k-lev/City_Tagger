@@ -45,7 +45,7 @@ The model has 73.5% accuracy.
 
 ## Sample Webpage Sample Result
 
-![Result Sample](https://raw.github.com/k-lev/City_Tagger/master/img/home_page.png)
+![Result Sample](https://raw.github.com/k-lev/City_Tagger/master/img/webPageSample.png)
 
 ## Package Requirements
 pandas
