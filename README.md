@@ -36,11 +36,11 @@ Be aware if doing this yourself, that the actual process involved downloading 43
 
 Image data has far too many features for standard machine learning techniques to categorize.  An image whose dimensions are 224x224 (x 3 colors) has 150,528 features.  What's more, the features are highly correlated and redundant... in other words, they are largely bad features.
 
-The solution I can up with was to featurize my images by passing them through a deep, pretrained, convolutional neural network.  Deep, convolutional neural nets are designed to be adept at finding complex, non-linear image features in images while making excellent assumptions about what kinds of features are relevant.  For example, they care about the localized relationships between pixels, but ignore the absolute positions of those features in the image.    
+The solution I came up with was to featurize my images by passing them through a deep, pretrained, convolutional neural network.  Deep, convolutional neural nets are designed to be adept at finding complex, non-linear image features in images while making excellent assumptions about what kinds of features are relevant.  For example, they care about the localized relationships between pixels, but ignore the absolute positions of those features in the image.    
 
-What's more what deep, convolutional neural networks learn about images, if trained on a rich enough dataset, his highly transferrable to new datasets.
+In addition, deep, convolutional neural nets, when trained on a rich enough dataset, learn features that are highly transferable to totally novel image datasets.  Thus, I was able to use a pretrained neural net to generate the features of my dataset of city images.
 
-The essential point for the City Tagger project is that I can pass an image into the neural net with 150,000 (largely bad) features, and it will output 4096 excellent image features, a number quite tractable with standard machine learning techniques.
+In sum, the City Tagger can pass an image into the neural net with 150,000 (largely bad) features, and it will output 4096 excellent image features, a number quite tractable with standard machine learning techniques.
 
 ## <a name="pipeline">The Pipeline
 
@@ -48,7 +48,7 @@ The essential point for the City Tagger project is that I can pass an image into
 2.  Retrieve an image from s3
 3.  Preprocess the image (resize, reshape, normalize using mean neural net training image)
 4.  Featurize the image by passing it through the neural networks
-5. Train an SVM model using the featurized images.
+5.  Train an SVM model using the featurized images.
 
 (Note: steps 2-5 are highly parallelized.)
 
